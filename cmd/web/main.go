@@ -11,23 +11,19 @@ import (
 	"github.com/Vanshikav123/gosnippet.git/internal/models"
 	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
-//type HandlerFunc func(w http.ResponseWriter, r *http.Request)
-// type Handler interface {
-// ServeHTTP(w http.ResponseWriter, r *http.Request)}
-// go run ./cmd/web
-
 type application struct {
-	errorLog      *log.Logger
-	infoLog       *log.Logger
-	snippets      *models.SnippetModel
-	templateCache map[string]*template.Template
-	formDecoder   *form.Decoder
+	errorLog          *log.Logger
+	infoLog           *log.Logger
+	snippets          *models.SnippetModel
+	templateCache     map[string]*template.Template
+	formDecoder       *form.Decoder
+	apiRequestCounter *prometheus.CounterVec // Prometheus CounterVec
 }
 
 func main() {
-
 	addr := flag.String("addr", ":4000", "http network address")
 	dsn := flag.String("dsn", "web:pass@/snippetbox?parseTime=true", "MySQL data source name")
 
@@ -46,12 +42,24 @@ func main() {
 		errorLog.Fatal(err)
 	}
 	formDecoder := form.NewDecoder()
+
+	// Initialize Prometheus metrics
+	apiRequestCounter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "gosnippet_api_requests_total",
+			Help: "Total number of API requests processed by GoSnippet.",
+		},
+		[]string{"endpoint", "method"},
+	)
+	prometheus.MustRegister(apiRequestCounter)
+
 	app := &application{
-		errorLog:      errorLog,
-		infoLog:       infoLog,
-		snippets:      &models.SnippetModel{DB: db},
-		templateCache: templateCache,
-		formDecoder:   formDecoder,
+		errorLog:          errorLog,
+		infoLog:           infoLog,
+		snippets:          &models.SnippetModel{DB: db},
+		templateCache:     templateCache,
+		formDecoder:       formDecoder,
+		apiRequestCounter: apiRequestCounter, // Attach the counter
 	}
 
 	srv := &http.Server{
@@ -64,6 +72,7 @@ func main() {
 	err = srv.ListenAndServe()
 	errorLog.Fatal(err)
 }
+
 func openDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

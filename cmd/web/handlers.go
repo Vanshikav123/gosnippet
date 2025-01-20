@@ -11,38 +11,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+func (app *application) withMetrics(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		app.apiRequestCounter.WithLabelValues(r.URL.Path, r.Method).Inc() // Increment counter
+		next(w, r)
+	}
+}
+
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	/*if r.URL.Path != "/" {
-		app.notFound(w)
-		return
-	}*/
 	snippets, err := app.snippets.Latest()
 	if err != nil {
 		app.serverError(w, err)
 		return
 	}
-	/*for _, snippet := range snippets {
-		fmt.Fprintf(w, "%v\n", snippet)
-	}
-	files := []string{
-		"./ui/html/base.html",
-		"./ui/html/partials/nav.html",
-		"./ui/html/pages/home.html",
-	}
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	data := &templateData{
-		Snippets: snippets,
-	}
-
-	//err = ts.Execute(w, nil)
-	err = ts.ExecuteTemplate(w, "base", data)
-	if err != nil {
-		app.serverError(w, err)
-	}*/
 	data := app.newTemplateData(r)
 	data.Snippets = snippets
 	app.render(w, http.StatusOK, "home.html", data)
@@ -65,25 +46,6 @@ func (app *application) snippetView(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	/*files := []string{
-		"./ui/html/base.html",
-		"./ui/html/partials/nav.html",
-		"./ui/html/pages/view.html",
-	}
-
-	ts, err := template.ParseFiles(files...)
-	if err != nil {
-		app.serverError(w, err)
-		return
-	}
-	data := &templateData{
-		Snippet: snippet,
-	}
-	err = ts.ExecuteTemplate(w, "base", data)
-	if err != nil {
-		app.serverError(w, err)
-	}
-	//fmt.Fprintf(w, "%+v", snippet)*/
 	data := app.newTemplateData(r)
 	data.Snippet = snippet
 
@@ -97,8 +59,15 @@ type snippetCreateForm struct {
 	validator.Validator `form:"-"`
 }
 
+func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
+	data := app.newTemplateData(r)
+	data.Form = snippetCreateForm{
+		Expires: 365,
+	}
+	app.render(w, http.StatusOK, "create.html", data)
+}
+
 func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request) {
-	//r.Body = http.MaxBytesReader(w, r.Body, 4096)
 	var form snippetCreateForm
 	err := app.decodePostForm(r, &form)
 	if err != nil {
@@ -123,13 +92,4 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
-}
-
-func (app *application) snippetCreate(w http.ResponseWriter, r *http.Request) {
-	data := app.newTemplateData(r)
-
-	data.Form = snippetCreateForm{
-		Expires: 365,
-	}
-	app.render(w, http.StatusOK, "create.html", data)
 }
