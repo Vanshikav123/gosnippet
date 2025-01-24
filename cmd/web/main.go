@@ -6,9 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"text/template"
+	"text/template" // New import
+	"time"
 
 	"github.com/Vanshikav123/gosnippet.git/internal/models"
+	"github.com/alexedwards/scs/mysqlstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/go-playground/form/v4"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,6 +24,7 @@ type application struct {
 	templateCache     map[string]*template.Template
 	formDecoder       *form.Decoder
 	apiRequestCounter *prometheus.CounterVec // Prometheus CounterVec
+	sessionManager    *scs.SessionManager
 }
 
 func main() {
@@ -43,6 +47,10 @@ func main() {
 	}
 	formDecoder := form.NewDecoder()
 
+	sessionManager := scs.New()
+	sessionManager.Store = mysqlstore.New(db)
+	sessionManager.Lifetime = 12 * time.Hour
+
 	// Initialize Prometheus metrics
 	apiRequestCounter := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -60,6 +68,7 @@ func main() {
 		templateCache:     templateCache,
 		formDecoder:       formDecoder,
 		apiRequestCounter: apiRequestCounter, // Attach the counter
+		sessionManager:    sessionManager,
 	}
 
 	srv := &http.Server{

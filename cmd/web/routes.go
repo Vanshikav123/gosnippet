@@ -15,12 +15,12 @@ func (app *application) routes() http.Handler {
 	})
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	router.Handler(http.MethodGet, "/static/*filepath", http.StripPrefix("/static", fileServer))
-
+	dynamic := alice.New(app.sessionManager.LoadAndSave)
 	// API routes with metrics tracking
-	router.HandlerFunc(http.MethodGet, "/", app.withMetrics(app.home))
-	router.HandlerFunc(http.MethodGet, "/snippet/view/:id", app.withMetrics(app.snippetView))
-	router.HandlerFunc(http.MethodGet, "/snippet/create", app.withMetrics(app.snippetCreate))
-	router.HandlerFunc(http.MethodPost, "/snippet/create", app.withMetrics(app.snippetCreatePost))
+	router.Handler(http.MethodGet, "/", dynamic.ThenFunc(app.withMetrics(app.home)))
+	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.withMetrics(app.snippetView)))
+	router.Handler(http.MethodGet, "/snippet/create", dynamic.ThenFunc(app.withMetrics(app.snippetCreate)))
+	router.Handler(http.MethodPost, "/snippet/create", dynamic.ThenFunc(app.withMetrics(app.snippetCreatePost)))
 
 	// Metrics endpoint
 	router.Handler(http.MethodGet, "/metrics", promhttp.Handler())
