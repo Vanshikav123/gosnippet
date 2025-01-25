@@ -21,6 +21,12 @@ func (app *application) routes() http.Handler {
 	router.Handler(http.MethodGet, "/snippet/view/:id", dynamic.ThenFunc(app.withMetrics(app.snippetView)))
 	router.Handler(http.MethodGet, "/snippet/create", dynamic.ThenFunc(app.withMetrics(app.snippetCreate)))
 	router.Handler(http.MethodPost, "/snippet/create", dynamic.ThenFunc(app.withMetrics(app.snippetCreatePost)))
+	//
+	router.Handler(http.MethodGet, "/user/signup", dynamic.ThenFunc(app.withMetrics(app.userSignup)))
+	router.Handler(http.MethodPost, "/user/signup", dynamic.ThenFunc(app.withMetrics(app.userSignupPost)))
+	router.Handler(http.MethodGet, "/user/login", dynamic.ThenFunc(app.withMetrics(app.userLogin)))
+	router.Handler(http.MethodPost, "/user/login", dynamic.ThenFunc(app.withMetrics(app.userLoginPost)))
+	router.Handler(http.MethodPost, "/user/logout", dynamic.ThenFunc(app.withMetrics(app.userLogoutPost)))
 
 	// Metrics endpoint
 	router.Handler(http.MethodGet, "/metrics", promhttp.Handler())
