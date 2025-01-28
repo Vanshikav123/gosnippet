@@ -1,12 +1,14 @@
 package main
 
 import (
+	"io/fs"
 	"net/http"
 	"path/filepath"
 	"text/template"
 	"time"
 
 	"github.com/Vanshikav123/gosnippet.git/internal/models"
+	"github.com/Vanshikav123/gosnippet.git/ui"
 	"github.com/justinas/nosurf"
 )
 
@@ -20,11 +22,17 @@ type templateData struct {
 	CSRFToken       string
 }
 
+var functions = template.FuncMap{
+	"formatDate": func(t time.Time) string {
+		return t.Format("02 Jan 2006 at 15:04")
+	},
+}
+
 func newTemplateCache() (map[string]*template.Template, error) {
 
 	cache := map[string]*template.Template{}
 
-	pages, err := filepath.Glob("./ui/html/pages/*.html")
+	pages, err := fs.Glob(ui.Files, "html/pages/*.html")
 	if err != nil {
 		return nil, err
 	}
@@ -33,28 +41,19 @@ func newTemplateCache() (map[string]*template.Template, error) {
 
 		name := filepath.Base(page)
 
-		/*files := []string{
-			"./ui/html/base.html",
-			"./ui/html/partials/nav.html",
+		patterns := []string{
+			"html/base.html",
+			"html/partials/*.html",
 			page,
-		}*/
-		ts, err := template.ParseFiles("./ui/html/base.html")
+		}
+		// Use ParseFS() instead of ParseFiles() to parse the template files
+		// from the ui.Files embedded filesystem.
+		ts, err := template.New(name).Funcs(functions).ParseFS(ui.Files, patterns...)
 		if err != nil {
 			return nil, err
 		}
-		ts, err = ts.ParseGlob("./ui/html/partials/*.html")
-		if err != nil {
-			return nil, err
-		}
-
-		ts, err = ts.ParseFiles(page)
-		if err != nil {
-			return nil, err
-		}
-
 		cache[name] = ts
 	}
-
 	return cache, nil
 }
 
