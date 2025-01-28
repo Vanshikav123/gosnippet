@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Vanshikav123/gosnippet.git/internal/models"
+	"github.com/justinas/nosurf"
 )
 
 type templateData struct {
@@ -16,6 +17,7 @@ type templateData struct {
 	Form            any
 	Flash           string
 	IsAuthenticated bool
+	CSRFToken       string
 }
 
 func newTemplateCache() (map[string]*template.Template, error) {
@@ -61,5 +63,6 @@ func (app *application) newTemplateData(r *http.Request) *templateData {
 		CurrentYear:     time.Now().Year(),
 		Flash:           app.sessionManager.PopString(r.Context(), "flash"),
 		IsAuthenticated: app.isAuthenticated(r),
+		CSRFToken:       nosurf.Token(r),
 	}
 }
